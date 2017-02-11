@@ -1,13 +1,34 @@
 ---
 title: "Wrangle OpenAQ extraordinary data"
+author: M. Salmon
 output: revealjs::revealjs_presentation
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE, 
+                      cache = FALSE)
+library("ggplot2")
+library("ggmap")
+library("viridis")
+library("ggthemes")
+library("ggrepel")
+library("dplyr")
+theme_set(theme_bw(base_size = 22))
+```
 
 # Intro: who am I
 
 # Why wanting to get OpenAQ data?
 
 # A treasure from New Zealand
+
+## The All darkblues?
+
+## The kiwis?
+
+## No! R!
 
 # Bringing OpenAQ to R!
 
@@ -19,9 +40,120 @@ output: revealjs::revealjs_presentation
 
 # Some wrangling cases
 
-## WHO daily limit, PM2.5 in Delhi
+## Map of all OpenAQ locations
+
+## Delhi PM2.5 daily time series
+
+```{r delhi hourly, fig.width = 10, fig.height = 6}
+load("data/meas_india.RData")
+
+table <- both %>% mutate(day = as.Date(dateLocal)) %>%
+  filter(value > 0, value != 1985) %>%
+  group_by(day, location) %>%
+  summarize(PM25 = mean(value)) %>%
+  ungroup()
+
+ ggplot() +
+  geom_line(data = table, aes(x = day,y = PM25), col = "darkblue")+
+  ylab(expression(paste("PM2.5 concentration (", mu, "g/",m^3,")")))+
+   xlab("Time (days)")
+```
+
+## vs. Indian health categories
+
+
+```{r delhi daily, fig.width = 10, fig.height = 6}
+
+
+
+
+paletteAQI <- viridis::viridis_pal(option = "plasma")(6)
+paletteAQI2 <- factor(paletteAQI,
+                     levels = paletteAQI)
+labels <- factor(c( "Good", "Satisfactory", "Moderately polluted",
+                    "Poor", "Very Poor", "Severe"),
+                 levels = c( "Good", "Satisfactory", "Moderately polluted",
+                             "Poor", "Very Poor", "Severe"))
+
+aqiPM <- data.frame(ymin = c(0, 30, 60, 90, 120, 250),
+                    ymax = c(30, 60, 90, 120, 250, Inf),
+                    col = paletteAQI2)
+
+
+ggplot() +
+  geom_rect(data = aqiPM, aes(xmin = table$day[1], xmax = max(table$day),
+                              ymin = ymin, ymax = ymax,
+                              fill = col), alpha = 0.7)  +
+  scale_fill_manual(name="AQI Category PM.5",
+                      breaks=paletteAQI,
+                      values=paletteAQI,
+                      labels=labels)+
+  geom_line(data = table, aes(x = day,y = PM25))+
+  ylab(expression(paste("PM2.5 concentration (", mu, "g/",m^3,")")))+
+   xlab("Time (days)") +
+  theme(legend.position = "bottom")
+
+```
+
+## Delhi PM2.5 vs. WHO limit
+
+```{r delhi daily who, fig.width = 10, fig.height = 6}
+
+ggplot() +
+  geom_line(data = table, aes(x = day,y = PM25), 
+             col = "darkblue")+
+  geom_hline(yintercept = 25, size = 1.2, col = "darkred") +
+  ylab(expression(paste("PM2.5 concentration (", mu, "g/",m^3,")")))+
+   xlab("Time (days)") 
+```
+
+
+
+## Sarajevo PM10 stations
+
+```{r}
+sarajevo <- readr::read_csv("data/sarajevo.csv")
+daily <- filter(sarajevo, parameter == "pm10") %>%
+  group_by(location, longitude, latitude, day = as.Date(dateLocal)) %>%
+  summarize(pm10 = mean(value)) %>%
+  group_by(day) %>%
+  filter(all(!is.na(pm10))) %>%
+  ungroup() %>%
+  filter(location != "Ivan Sedlo")
+
+map_data <- unique(select(daily, longitude,
+                          latitude, location))
+```
+
+```{r}
+sarajevo_map <- get_map(location = "Sarajevo Bosnia",
+                        zoom = 12)
+
+
+ggmap(sarajevo_map) +
+  theme_map() +
+  geom_point(data = map_data,
+             aes(longitude,
+                 latitude),
+             size = 4) +
+  geom_label_repel(data = map_data,
+                   aes(longitude,
+                       latitude,
+                       label = location),
+                   size = 10)
+```
 
 ## WHO daily limit, PM10 in Sarajevo
+
+```{r}
+ggplot(daily) +
+  geom_line(aes(day, pm10)) +
+  facet_grid(location  ~ .) +
+  geom_hline(yintercept = 50, col = "red") +
+  ylab(expression(paste("Daily mean PM10 concentration (", mu, "g/",m^3,")"))) + 
+  xlab("Time (days)") +
+  theme(strip.text.y = element_text(angle = 0))
+```
 
 ## Coyhaique vs. Ulaanbaatar
 
