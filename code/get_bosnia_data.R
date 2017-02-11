@@ -1,6 +1,3 @@
-library("ropenaq")
-library("dplyr")
-library("purrr")
 count <- aq_measurements(city = "Sarajevo", 
                          country = "BA")
 count <- attr(count, "meta")$found

@@ -1,46 +1,134 @@
 ---
 title: "Wrangle OpenAQ extraordinary data"
 author: M. Salmon
-output: revealjs::revealjs_presentation
+output :
+  revealjs::revealjs_presentation:
+    transition: slide
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,
                       warning = FALSE,
                       message = FALSE, 
-                      cache = FALSE)
+                      cache = TRUE)
 library("ggplot2")
 library("ggmap")
 library("viridis")
 library("ggthemes")
 library("ggrepel")
 library("dplyr")
+library("gganimate")
+library("animation")
 theme_set(theme_bw(base_size = 22))
 ```
 
 # Intro: who am I
 
+## Who am I?
+
+* BSc Biology, MSc Ecology, MPH, PhD in statistics
+
+* Data manager and statistician for the CHAI project
+
+![](./figs/chai_logo_color-blog.gif)
+
+* An open-data and open-source enthusiaste
+
+## What I am NOT
+
+Christa said I was an "OpenAQ data wrangler extraordinaire"... LIES!
+
+But I like to wrangle OpenAQ extraordinary data!
+
 # Why wanting to get OpenAQ data?
+
+## {data-background="https://media.giphy.com/media/kkpcRessCvNyo/giphy.gif"}
 
 # A treasure from New Zealand
 
-## The All darkblues?
+## {data-background="https://media.giphy.com/media/MHTCPUVHs3I3e/giphy.gif"}
 
-## The kiwis?
+## {data-background="figs/kiwi.jpg"}
 
 ## No! R!
 
+![](./figs/R_logo.svg.png)
+
+Language for statistical computing
+
+## R capabilities
+
+* Data wrangling, modeling, visualization
+
+* Reporting, interactive plots and apps
+
+* Collaborative effort like Wikipedia
+
 # Bringing OpenAQ to R!
+
+## What is a package? {data-background="https://media.giphy.com/media/exC1tT30Q4JRm/source.gif"}
 
 ## What is a package?
 
-## `ropenaq`
+* An add-in to R
+
+* A collection of code and documentation
+
+
+
+## ropenaq {data-background-iframe="http://ropensci.github.io/ropenaq/index.html"}
+
+## ropenaq
+
+```r
+library("purrr")
+library("dplyr")
+library("ropenaq")
+count <- aq_measurements(city = "Sarajevo", 
+                         country = "BA")
+count <- attr(count, "meta")$found
+
+sarajevo <- 1:(ceiling(count/10000)) %>%
+  map(function(page){
+    aq_measurements(city = "Sarajevo", 
+                    country = "BA",
+                    limit = 10000,
+                    page = page)
+  }) %>%
+  bind_rows()
+
+```
 
 ## Quality control
+
+* Review of the software
+
+* Improvement for robustness and ease of use
+
+* Part of an open science project!
+
+![landscape](./figs/github_footer.png)
 
 # Some wrangling cases
 
 ## Map of all OpenAQ locations
+
+
+```{r}
+library("rworldmap")
+load("data/openaq_locations.RData")
+worldMap <- map_data(map="world")
+
+gg <- ggplot() + geom_map(data=worldMap, map=worldMap,
+                          aes(map_id=region, x=long, y=lat),
+                          fill = "grey60")
+
+plotMap <- gg +
+  geom_point(data = dataGeo, aes(x=longitude, y=latitude), size=1, col = "darkblue")+
+  theme_map()
+print(plotMap)
+
+```
 
 ## Delhi PM2.5 daily time series
 
@@ -157,18 +245,101 @@ ggplot(daily) +
 
 ## Coyhaique vs. Ulaanbaatar
 
-## 4th of July in the USA
+```{r}
+load("data/cities.RData")
+cities <- ungroup(cities)
+cities <- filter(cities, location != "Coyhaique II")
+cities <- filter(cities, pm25>0)
+cities <- mutate(cities, location = ifelse(grepl("Ula", location), "Ulaanbaatar", location))
+ ggplot(cities) +
+  geom_line(aes(x = day,y = pm25), col = "darkblue")+
+  ylab(expression(paste("PM2.5 concentration (", mu, "g/",m^3,")")))+
+   xlab("Time (days)") +
+  facet_grid(location  ~ .) +
+  theme(strip.text.y = element_text(angle = 0))
+  
 
-## Data surfing
+```
+
+
+
+```{r fireworks, cache = TRUE}
+load( "data/4th_july.RData")
+
+mintime <- lubridate::ymd_hms("2016 07 04 17 00 00")
+maxtime <- lubridate::ymd_hms("2016 07 05 07 00 00")
+
+measurements <- filter(measurements, 
+                       hour >= mintime)
+measurements <- filter(measurements, 
+                       hour <= maxtime)
+
+library("albersusa")
+us <- usa_composite()
+us_map <- fortify(us, region="name")
+us_map <- filter(us_map, !id %in% c("Alaska", "Hawaii"))
+gg <- ggplot()
+gg <- gg + geom_map(data=us_map, map=us_map,
+                    aes(x=long, y=lat, map_id=id),
+                    color="white", size=0.1, fill="black")
+gg <- gg + theme_map(base_size = 20)
+gg <- gg + theme(plot.title = element_text(color="white"))
+gg <- gg + theme(legend.position
+                 = "bottom")
+gg <- gg + theme(panel.background = element_rect(fill = "black"))
+gg <- gg + theme(plot.background=element_rect(fill="black"))
+gg <- gg + theme(legend.background= element_rect(fill="black", colour= NA)) 
+gg <- gg + theme(legend.text = element_text(colour="white"))
+gg <- gg + theme(legend.title = element_text(colour="white"))
+
+
+lala <- group_by(measurements, location, latitude) %>% summarize(n = n())
+
+measurements <- group_by(measurements, location, latitude) %>%
+  filter(n() == max(lala$n),
+         latitude < 50, longitude > - 130) %>%
+  ungroup()
+
+minConc <- min(measurements$value, na.rm = TRUE)
+maxConc <- max(measurements$value, na.rm = TRUE)
+plotMap <- gg+
+  geom_point(data = measurements, aes(x=longitude,
+                                      y=latitude,
+                                      frame=as.character(hour),
+                                      colour = value,
+                                      size = value))+
+  coord_map()+
+  viridis::scale_color_viridis(expression(paste("PM2.5 concentration (", mu, "g/",m^3,")Set to 80 if >80")),
+                               option = "inferno") 
+ 
+
+ani.options(interval = 0.5, ani.width = 800, ani.height = 550)
+
+gg_animate(plotMap, "figs/fireworks.gif")
+```
+## Fireworks 4th of July via PM2.5
+
+
+![](./figs/fireworks.gif)
 
 # What can you do?
 
+## Learn R! {data-background="https://media.giphy.com/media/WkOREwvEGybao/giphy.gif"}
+
 ## How to learn R
 
-* AQ as a motivator like baseball?
+* Datacamp, Coursera
+
+* Hadley Wickham's books
+
+* Online tutorials
 
 ## How to contribute to ropenaq
+
+* Report bugs!
 
 * Help build the documentation.
 
 * Show me examples of figures, for adding how-to in the documentation.
+
+## Thank you! {data-background="https://media.giphy.com/media/LGsfQE3YrHS2k/giphy.gif"}
