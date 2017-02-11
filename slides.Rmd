@@ -1,0 +1,42 @@
+---
+title: "Wrangle OpenAQ extraordinary data"
+output: revealjs::revealjs_presentation
+---
+
+# Intro: who am I
+
+# Why wanting to get OpenAQ data?
+
+# A treasure from New Zealand
+
+# Bringing OpenAQ to R!
+
+## What is a package?
+
+## `ropenaq`
+
+## Quality control
+
+# Some wrangling cases
+
+## WHO daily limit, PM2.5 in Delhi
+
+## WHO daily limit, PM10 in Sarajevo
+
+## Coyhaique vs. Ulaanbaatar
+
+## 4th of July in the USA
+
+## Data surfing
+
+# What can you do?
+
+## How to learn R
+
+* AQ as a motivator like baseball?
+
+## How to contribute to ropenaq
+
+* Help build the documentation.
+
+* Show me examples of figures, for adding how-to in the documentation.
