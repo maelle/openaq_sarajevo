@@ -32,7 +32,7 @@ theme_set(theme_bw(base_size = 22))
 
 ![](./figs/chai_logo_color-blog.gif)
 
-* An open-data and open-source enthusiaste
+* An open-data and open-source enthusiast
 
 ## What I am NOT
 
